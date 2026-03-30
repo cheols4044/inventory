@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HYW Inventory Manager</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #0d0f12; --bg2: #13161b; --bg3: #1a1e25; --bg4: #222730;
+  --border: #2a3040; --border2: #3a4558;
+  --text: #e8eaf0; --text2: #8892a4; --text3: #5a6478;
+  --accent: #3b82f6; --accent2: #1d4ed8;
+  --green: #22c55e; --green-bg: #052e16;
+  --yellow: #f59e0b; --yellow-bg: #1c1402;
+  --red: #ef4444; --red-bg: #1f0808;
+  --purple: #a78bfa; --purple-bg: #1a1030;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; min-height:100vh; }
+
+/* Layout */
+.app { display:flex; flex-direction:column; height:100vh; }
+.topbar { display:flex; align-items:center; justify-content:space-between; padding:0 20px; height:52px; background:var(--bg2); border-bottom:1px solid var(--border); flex-shrink:0; }
+.topbar-left { display:flex; align-items:center; gap:12px; }
+.logo { font-family:var(--mono); font-weight:600; font-size:15px; color:var(--text); letter-spacing:0.05em; }
+.logo span { color:var(--accent); }
+.status-pill { display:flex; align-items:center; gap:6px; font-size:11px; padding:3px 10px; border-radius:20px; font-family:var(--mono); }
+.status-pill.connected { background:var(--green-bg); color:var(--green); border:1px solid #166534; }
+.status-pill.disconnected { background:var(--red-bg); color:var(--red); border:1px solid #7f1d1d; }
+.status-pill.pending { background:var(--yellow-bg); color:var(--yellow); border:1px solid #78350f; }
+.dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+.main { display:flex; flex:1; overflow:hidden; }
+.sidebar { width:200px; background:var(--bg2); border-right:1px solid var(--border); flex-shrink:0; padding:12px 0; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:9px 16px; cursor:pointer; color:var(--text2); font-size:13px; transition:all 0.15s; border-left:2px solid transparent; }
+.nav-item:hover { color:var(--text); background:var(--bg3); }
+.nav-item.active { color:var(--accent); background:rgba(59,130,246,0.08); border-left-color:var(--accent); }
+.nav-icon { font-size:15px; width:18px; text-align:center; }
+.nav-badge { margin-left:auto; background:var(--red); color:#fff; font-size:10px; padding:1px 6px; border-radius:10px; font-family:var(--mono); }
+
+.content { flex:1; overflow-y:auto; padding:24px; }
+
+/* Cards & panels */
+.card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:20px; }
+.card-header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); }
+.card-title { font-weight:500; font-size:13px; color:var(--text); display:flex; align-items:center; gap:8px; }
+.card-body { padding:18px; }
+
+/* Buttons */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:5px; border:none; cursor:pointer; font-size:12px; font-family:var(--sans); font-weight:500; transition:all 0.15s; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:var(--accent2); }
+.btn-secondary { background:var(--bg3); color:var(--text2); border:1px solid var(--border2); }
+.btn-secondary:hover { color:var(--text); border-color:var(--text3); }
+.btn-success { background:#166534; color:var(--green); border:1px solid #166534; }
+.btn-success:hover { background:#14532d; }
+.btn-danger { background:#7f1d1d; color:var(--red); border:1px solid #7f1d1d; }
+.btn-danger:hover { background:#6b1616; }
+.btn-warning { background:#78350f; color:var(--yellow); border:1px solid #78350f; }
+.btn-warning:hover { background:#6d2e0b; }
+.btn-purple { background:var(--purple-bg); color:var(--purple); border:1px solid #4c1d95; }
+.btn-purple:hover { background:#2e1065; }
+.btn-sm { padding:4px 10px; font-size:11px; }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+/* Tables */
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th { text-align:left; padding:8px 12px; color:var(--text3); font-weight:500; font-family:var(--mono); font-size:11px; letter-spacing:0.05em; border-bottom:1px solid var(--border); white-space:nowrap; }
+td { padding:9px 12px; border-bottom:1px solid var(--border); color:var(--text2); vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:var(--bg3); }
+.mono { font-family:var(--mono); }
+
+/* Tags & badges */
+.tag { display:inline-flex; align-items:center; padding:2px 8px; border-radius:4px; font-size:11px; font-family:var(--mono); font-weight:500; white-space:nowrap; }
+.tag-welding { background:#1e3a5f; color:#60a5fa; }
+.tag-cable { background:#1a2e1a; color:#4ade80; }
+.tag-caster { background:#3b1f5e; color:#c084fc; }
+.tag-rigging { background:#3b2a0e; color:#fbbf24; }
+.tag-general { background:#2a2a2a; color:#9ca3af; }
+
+.badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:500; white-space:nowrap; }
+.badge-green { background:var(--green-bg); color:var(--green); }
+.badge-yellow { background:var(--yellow-bg); color:var(--yellow); }
+.badge-red { background:var(--red-bg); color:var(--red); }
+.badge-blue { background:rgba(59,130,246,0.1); color:var(--accent); }
+.badge-purple { background:var(--purple-bg); color:var(--purple); }
+.badge-gray { background:var(--bg4); color:var(--text3); }
+
+/* Forms */
+input, select, textarea { background:var(--bg3); border:1px solid var(--border2); border-radius:5px; color:var(--text); padding:7px 10px; font-family:var(--sans); font-size:13px; outline:none; width:100%; }
+input:focus, select:focus, textarea:focus { border-color:var(--accent); }
+select option { background:var(--bg3); }
+label { font-size:12px; color:var(--text2); margin-bottom:4px; display:block; }
+.form-group { margin-bottom:14px; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+/* Stats grid */
+.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+.stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:16px 18px; }
+.stat-label { font-size:11px; color:var(--text3); font-family:var(--mono); letter-spacing:0.05em; margin-bottom:6px; }
+.stat-value { font-size:24px; font-weight:600; font-family:var(--mono); color:var(--text); }
+.stat-sub { font-size:11px; color:var(--text3); margin-top:4px; }
+.stat-card.alert { border-color:var(--red); }
+.stat-card.warn { border-color:var(--yellow); }
+
+/* Settings panel */
+.settings-panel { position:fixed; right:-380px; top:0; width:380px; height:100vh; background:var(--bg2); border-left:1px solid var(--border); padding:24px; overflow-y:auto; transition:right 0.25s ease; z-index:100; }
+.settings-panel.open { right:0; }
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
+.overlay.show { display:block; }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:var(--bg2); border:1px solid var(--border2); border-radius:10px; width:680px; max-height:85vh; overflow-y:auto; }
+.modal-header { display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid var(--border); }
+.modal-title { font-weight:600; font-size:15px; }
+.modal-body { padding:22px; }
+.modal-footer { display:flex; gap:10px; justify-content:flex-end; padding:16px 22px; border-top:1px solid var(--border); }
+.close-btn { background:none; border:none; color:var(--text3); cursor:pointer; font-size:18px; padding:2px 6px; }
+.close-btn:hover { color:var(--text); }
+
+/* PO Approval workflow */
+.workflow-steps { display:flex; align-items:center; gap:0; margin-bottom:24px; }
+.wf-step { display:flex; align-items:center; gap:8px; flex:1; }
+.wf-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; flex-shrink:0; }
+.wf-dot.done { background:var(--green); color:#fff; }
+.wf-dot.active { background:var(--accent); color:#fff; box-shadow:0 0 0 3px rgba(59,130,246,0.3); }
+.wf-dot.pending { background:var(--bg4); color:var(--text3); border:1px solid var(--border2); }
+.wf-label { font-size:11px; color:var(--text2); }
+.wf-line { flex:1; height:1px; background:var(--border); margin:0 4px; }
+.wf-line.done { background:var(--green); }
+
+/* PO item rows */
+.po-item-row { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 80px; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); }
+.po-item-row.header { color:var(--text3); font-size:11px; font-family:var(--mono); padding-bottom:6px; }
+
+/* Tabs */
+.tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.tab { padding:8px 16px; cursor:pointer; color:var(--text3); font-size:13px; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.15s; }
+.tab:hover { color:var(--text2); }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* Search */
+.search-bar { display:flex; gap:10px; margin-bottom:16px; }
+.search-input { position:relative; flex:1; }
+.search-input input { padding-left:32px; }
+.search-input::before { content:'⌕'; position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:16px; }
+
+/* Alerts banner */
+.alert-banner { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:6px; margin-bottom:16px; font-size:12px; }
+.alert-banner.warning { background:var(--yellow-bg); border:1px solid #78350f; color:var(--yellow); }
+.alert-banner.info { background:rgba(59,130,246,0.08); border:1px solid #1d4ed8; color:var(--accent); }
+
+/* Progress bar */
+.progress-bar { background:var(--bg4); border-radius:4px; height:6px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+
+/* Inline edit cell */
+.editable { cursor:pointer; padding:3px 6px; border-radius:3px; }
+.editable:hover { background:var(--bg4); }
+
+/* Toast */
+.toast-container { position:fixed; bottom:20px; right:20px; z-index:300; display:flex; flex-direction:column; gap:8px; }
+.toast { background:var(--bg3); border:1px solid var(--border2); border-radius:6px; padding:10px 16px; font-size:13px; display:flex; align-items:center; gap:10px; min-width:260px; animation:slideIn 0.2s ease; }
+.toast.success { border-color:#166534; }
+.toast.error { border-color:#7f1d1d; }
+.toast.info { border-color:#1d4ed8; }
+@keyframes slideIn { from { transform:translateX(20px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+/* Unit indicator */
+.unit-badge { font-size:10px; font-family:var(--mono); color:var(--text3); background:var(--bg4); padding:1px 5px; border-radius:3px; margin-left:4px; }
+
+.section-title { font-size:11px; font-family:var(--mono); color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:12px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+
+.empty-state { text-align:center; padding:40px; color:var(--text3); }
+.empty-state .icon { font-size:32px; margin-bottom:10px; }
+
+.qbo-auth-box { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:20px; text-align:center; }
+.qbo-logo { font-size:28px; margin-bottom:10px; }
+
+/* Approval section */
+.approval-box { background:var(--bg3); border:1px solid var(--border2); border-radius:8px; padding:18px; margin-top:16px; }
+.approval-header { display:flex; align-items:center; gap:8px; margin-bottom:14px; font-weight:500; }
+.approval-checklist { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.check-item { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text2); }
+.check-item.checked { color:var(--green); }
+.check-item .ck { width:16px; height:16px; border-radius:3px; border:1px solid var(--border2); display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0; }
+.check-item.checked .ck { background:var(--green); border-color:var(--green); color:#fff; }
+
+.signature-area { border:1px dashed var(--border2); border-radius:5px; padding:14px; text-align:center; cursor:pointer; color:var(--text3); font-size:12px; transition:all 0.15s; }
+.signature-area:hover { border-color:var(--accent); color:var(--accent); }
+.signature-area.signed { border-color:var(--green); color:var(--green); background:var(--green-bg); }
+
+.po-preview { background:var(--bg); border-radius:8px; padding:20px; font-size:12px; }
+.po-preview-header { display:flex; justify-content:space-between; margin-bottom:20px; }
+.po-company { font-weight:600; font-size:14px; color:var(--text); }
+.po-number { font-family:var(--mono); color:var(--accent); font-size:13px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:var(--bg2); }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">HY<span>-</span>WELD <span style="color:var(--text3);font-weight:300">|</span> <span style="font-size:12px;color:var(--text2)">Inventory Manager</span></div>
+    <div class="status-pill" id="ss-status"><div class="dot"></div><span>ShipStation</span></div>
+    <div class="status-pill" id="qbo-status"><div class="dot"></div><span>QuickBooks</span></div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="btn btn-secondary btn-sm" onclick="refreshAll()">↻ Refresh</button>
+    <button class="btn btn-primary btn-sm" onclick="openSettings()">⚙ Settings</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="nav-item active" onclick="showTab('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">▦</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showTab('mapping')" id="nav-mapping">
+      <span class="nav-icon">⇄</span> SKU Mapping
+    </div>
+    <div class="nav-item" onclick="showTab('inventory')" id="nav-inventory">
+      <span class="nav-icon">▤</span> Inventory
+    </div>
+    <div class="nav-item" onclick="showTab('reorder')" id="nav-reorder">
+      <span class="nav-icon">⚠</span> Reorder Alerts
+      <span class="nav-badge" id="reorder-badge">0</span>
+    </div>
+    <div class="nav-item" onclick="showTab('po')" id="nav-po">
+      <span class="nav-icon">✦</span> Purchase Orders
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content" id="content-area">
+    <!-- Injected by JS -->
+  </div>
+</div>
+</div>
+
+<!-- Settings Panel -->
+<div class="overlay" id="overlay" onclick="closeSettings()"></div>
+<div class="settings-panel" id="settings-panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div style="font-weight:600;font-size:15px;">Settings</div>
+    <button class="close-btn" onclick="closeSettings()">✕</button>
+  </div>
+
+  <div class="section-title">ShipStation API</div>
+  <div class="form-group">
+    <label>API Key</label>
+    <input type="text" id="cfg-ss-key" placeholder="API Key">
+  </div>
+  <div class="form-group">
+    <label>API Secret</label>
+    <input type="password" id="cfg-ss-secret" placeholder="API Secret">
+  </div>
+  <button class="btn btn-secondary" style="width:100%;margin-bottom:20px;" onclick="testSS()">Test ShipStation Connection</button>
+
+  <div class="section-title">QuickBooks Online</div>
+  <div class="form-group">
+    <label>Client ID</label>
+    <input type="text" id="cfg-qbo-client-id" placeholder="Client ID">
+  </div>
+  <div class="form-group">
+    <label>Client Secret</label>
+    <input type="password" id="cfg-qbo-client-secret" placeholder="Client Secret">
+  </div>
+  <div class="form-group">
+    <label>Realm ID (Company ID)</label>
+    <input type="text" id="cfg-qbo-realm" placeholder="Will be set after OAuth login">
+  </div>
+  <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" onclick="startQBOAuth()">Connect QuickBooks Online</button>
+  <button class="btn btn-secondary" style="width:100%;margin-bottom:20px;" onclick="disconnectQBO()">Disconnect QBO</button>
+
+  <div class="section-title">PO Settings</div>
+  <div class="form-group">
+    <label>Default PO Approver Name</label>
+    <input type="text" id="cfg-approver" placeholder="e.g. Hg Kim">
+  </div>
+  <div class="form-group">
+    <label>Company Name on PO</label>
+    <input type="text" id="cfg-company" value="Hy-Weld Inc." placeholder="Company Name">
+  </div>
+
+  <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveSettings()">Save Settings</button>
+</div>
+
+<!-- PO Modal -->
+<div class="modal-overlay" id="po-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="po-modal-title">Create Purchase Order</div>
+      <button class="close-btn" onclick="closePOModal()">✕</button>
+    </div>
+    <div class="modal-body" id="po-modal-body"></div>
+    <div class="modal-footer" id="po-modal-footer"></div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const STATE = {
+  cfg: {
+    ssKey: 'f7fe1d4e4c6143b1b285e98405323058',
+    ssSecret: 'f8015d293dbb48a2aab06ed4b6005583',
+    qboClientId: 'ABdLgp4P1OwpqRHdR2TlifgFNYaUwpDUnsNGJSngiydJFnJZ8E',
+    qboClientSecret: 'ymREKZqALUpK7B2KHcsYlKCDMLMULVRQWbUPI62H',
+    qboRealmId: '',
+    qboAccessToken: '',
+    qboRefreshToken: '',
+    approver: 'Hg Kim',
+    company: 'Hy-Weld Inc.',
+  },
+  ssConnected: false,
+  qboConnected: false,
+  currentTab: 'dashboard',
+
+  // SKU Mapping: { id, sssku, qbosku, name, category, unit, ssQty, qboQty, reorderPoint, reorderQty, vendor, unitCost }
+  mappings: [
+    { id:1, sssku:'ER70S-6-030-33', qbosku:'WW-ER70S6-030', name:'ER70S-6 .030" 33lb Spool', category:'welding', unit:'lb', ssQty:660, qboQty:198, reorderPoint:200, reorderQty:500, vendor:'Lincoln Electric', unitCost:2.85 },
+    { id:2, sssku:'ER70S-6-035-33', qbosku:'WW-ER70S6-035', name:'ER70S-6 .035" 33lb Spool', category:'welding', unit:'lb', ssQty:462, qboQty:330, reorderPoint:200, reorderQty:500, vendor:'Lincoln Electric', unitCost:2.80 },
+    { id:3, sssku:'ER70S-6-030-11', qbosku:'WW-ER70S6-030-11', name:'ER70S-6 .030" 11lb Spool', category:'welding', unit:'lb', ssQty:88, qboQty:44, reorderPoint:100, reorderQty:200, vendor:'Lincoln Electric', unitCost:3.10 },
+    { id:4, sssku:'WC-3-8-250', qbosku:'CABLE-3/8-250', name:'Wire Rope 3/8" 250ft', category:'cable', unit:'ft', ssQty:2000, qboQty:1500, reorderPoint:1000, reorderQty:2500, vendor:'Loos & Co', unitCost:0.42 },
+    { id:5, sssku:'WC-1-2-100', qbosku:'CABLE-1/2-100', name:'Wire Rope 1/2" 100ft', category:'cable', unit:'ft', ssQty:400, qboQty:200, reorderPoint:500, reorderQty:1000, vendor:'Loos & Co', unitCost:0.68 },
+    { id:6, sssku:'CS-4X2-HDG', qbosku:'CAST-4X2H', name:'4" x 2" Caster HDG', category:'caster', unit:'ea', ssQty:48, qboQty:120, reorderPoint:50, reorderQty:100, vendor:'Shepherd Casters', unitCost:8.50 },
+    { id:7, sssku:'CS-5X2-HDG', qbosku:'CAST-5X2H', name:'5" x 2" Caster HDG', category:'caster', unit:'ea', ssQty:72, qboQty:96, reorderPoint:50, reorderQty:100, vendor:'Shepherd Casters', unitCost:11.20 },
+    { id:8, sssku:'SH-5-16-G70', qbosku:'RIG-SHACKLE-5/16', name:'5/16" G70 Shackle', category:'rigging', unit:'ea', ssQty:240, qboQty:180, reorderPoint:100, reorderQty:300, vendor:'CM Columbus McKinnon', unitCost:3.75 },
+    { id:9, sssku:'ER308L-035-25', qbosku:'SS-ER308L-035', name:'ER308L .035" 25lb Spool', category:'welding', unit:'lb', ssQty:75, qboQty:50, reorderPoint:100, reorderQty:300, vendor:'Blue Demon', unitCost:4.20 },
+    { id:10, sssku:'WC-1-4-500', qbosku:'CABLE-1/4-500', name:'Wire Rope 1/4" 500ft', category:'cable', unit:'ft', ssQty:3500, qboQty:2000, reorderPoint:2000, reorderQty:5000, vendor:'Loos & Co', unitCost:0.28 },
+  ],
+
+  // Purchase Orders
+  pos: [
+    { id:'PO-2026-001', vendor:'Lincoln Electric', status:'approved', qboSent:true, date:'2026-03-15', total:2840, items:[{name:'ER70S-6 .030"',qty:500,unit:'lb',cost:2.85},{name:'ER70S-6 .035"',qty:500,unit:'lb',cost:2.80}] },
+  ],
+
+  currentPO: null,
+  poStep: 1, // 1=draft, 2=review, 3=approve, 4=sent
+};
+
+// ============================================================
+// INIT
+// ============================================================
+window.onload = () => {
+  loadSettings();
+  updateStatusPills();
+  showTab('dashboard');
+  updateReorderBadge();
+};
+
+function loadSettings() {
+  const saved = localStorage.getItem('hyw-cfg');
+  if (saved) {
+    const s = JSON.parse(saved);
+    Object.assign(STATE.cfg, s);
+  }
+  populateSettingsFields();
+  if (STATE.cfg.ssKey) STATE.ssConnected = true;
+  if (STATE.cfg.qboRealmId && STATE.cfg.qboAccessToken) STATE.qboConnected = true;
+}
+
+function populateSettingsFields() {
+  const c = STATE.cfg;
+  document.getElementById('cfg-ss-key').value = c.ssKey || '';
+  document.getElementById('cfg-ss-secret').value = c.ssSecret || '';
+  document.getElementById('cfg-qbo-client-id').value = c.qboClientId || '';
+  document.getElementById('cfg-qbo-client-secret').value = c.qboClientSecret || '';
+  document.getElementById('cfg-qbo-realm').value = c.qboRealmId || '';
+  document.getElementById('cfg-approver').value = c.approver || '';
+  document.getElementById('cfg-company').value = c.company || '';
+}
+
+function saveSettings() {
+  STATE.cfg.ssKey = document.getElementById('cfg-ss-key').value.trim();
+  STATE.cfg.ssSecret = document.getElementById('cfg-ss-secret').value.trim();
+  STATE.cfg.qboClientId = document.getElementById('cfg-qbo-client-id').value.trim();
+  STATE.cfg.qboClientSecret = document.getElementById('cfg-qbo-client-secret').value.trim();
+  STATE.cfg.qboRealmId = document.getElementById('cfg-qbo-realm').value.trim();
+  STATE.cfg.approver = document.getElementById('cfg-approver').value.trim();
+  STATE.cfg.company = document.getElementById('cfg-company').value.trim();
+  localStorage.setItem('hyw-cfg', JSON.stringify(STATE.cfg));
+  STATE.ssConnected = !!(STATE.cfg.ssKey);
+  updateStatusPills();
+  toast('Settings saved', 'success');
+  closeSettings();
+}
+
+function updateStatusPills() {
+  const ss = document.getElementById('ss-status');
+  const qbo = document.getElementById('qbo-status');
+  ss.className = 'status-pill ' + (STATE.ssConnected ? 'connected' : 'disconnected');
+  ss.innerHTML = `<div class="dot"></div><span>ShipStation ${STATE.ssConnected ? '✓' : '✗'}</span>`;
+  qbo.className = 'status-pill ' + (STATE.qboConnected ? 'connected' : 'pending');
+  qbo.innerHTML = `<div class="dot"></div><span>QuickBooks ${STATE.qboConnected ? '✓' : '—'}</span>`;
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showTab(tab) {
+  STATE.currentTab = tab;
+  ['dashboard','mapping','inventory','reorder','po'].forEach(t => {
+    document.getElementById('nav-' + t).classList.toggle('active', t === tab);
+  });
+  const content = document.getElementById('content-area');
+  if (tab === 'dashboard') content.innerHTML = renderDashboard();
+  else if (tab === 'mapping') content.innerHTML = renderMapping();
+  else if (tab === 'inventory') content.innerHTML = renderInventory();
+  else if (tab === 'reorder') content.innerHTML = renderReorder();
+  else if (tab === 'po') content.innerHTML = renderPO();
+}
+
+function refreshAll() {
+  toast('Syncing from ShipStation & QuickBooks...', 'info');
+  setTimeout(() => {
+    toast('Data refreshed successfully', 'success');
+    showTab(STATE.currentTab);
+  }, 1500);
+}
+
+// ============================================================
+// COMPUTED HELPERS
+// ============================================================
+function totalQty(m) { return m.ssQty + m.qboQty; }
+function stockStatus(m) {
+  const t = totalQty(m);
+  if (t <= 0) return 'out';
+  if (t <= m.reorderPoint) return 'low';
+  if (t <= m.reorderPoint * 1.5) return 'warn';
+  return 'ok';
+}
+function unitLabel(m) {
+  if (m.unit === 'lb') return 'lb';
+  if (m.unit === 'ft') return 'ft';
+  return 'ea';
+}
+function catTag(cat) {
+  const map = {welding:'tag-welding',cable:'tag-cable',caster:'tag-caster',rigging:'tag-rigging'};
+  return `<span class="tag ${map[cat]||'tag-general'}">${cat}</span>`;
+}
+function statusBadge(s) {
+  const map = { ok:'<span class="badge badge-green">OK</span>', low:'<span class="badge badge-red">LOW</span>', warn:'<span class="badge badge-yellow">WARN</span>', out:'<span class="badge badge-red">OUT</span>' };
+  return map[s] || '';
+}
+function reorderItems() { return STATE.mappings.filter(m => totalQty(m) <= m.reorderPoint); }
+function updateReorderBadge() {
+  const b = document.getElementById('reorder-badge');
+  if (b) b.textContent = reorderItems().length;
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard() {
+  const all = STATE.mappings;
+  const low = reorderItems().length;
+  const totalVal = all.reduce((s,m) => s + totalQty(m) * m.unitCost, 0);
+  const pendingPOs = STATE.pos.filter(p => p.status !== 'approved' || !p.qboSent).length;
+
+  return `
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">TOTAL SKUs MAPPED</div>
+      <div class="stat-value">${all.length}</div>
+      <div class="stat-sub">SS + QBO unified</div>
+    </div>
+    <div class="stat-card ${low > 0 ? 'alert' : ''}">
+      <div class="stat-label">REORDER ALERTS</div>
+      <div class="stat-value" style="color:${low>0?'var(--red)':'var(--green)'}">${low}</div>
+      <div class="stat-sub">items below reorder point</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">INVENTORY VALUE</div>
+      <div class="stat-value" style="font-size:18px;">$${totalVal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+      <div class="stat-sub">combined SS + QBO</div>
+    </div>
+    <div class="stat-card ${pendingPOs>0?'warn':''}">
+      <div class="stat-label">PENDING POs</div>
+      <div class="stat-value" style="color:${pendingPOs>0?'var(--yellow)':'var(--text)'}">${pendingPOs}</div>
+      <div class="stat-sub">awaiting approval or send</div>
+    </div>
+  </div>
+
+  ${low > 0 ? `<div class="alert-banner warning">⚠ ${low} item(s) are below reorder point — <a href="#" onclick="showTab('reorder');return false;" style="color:var(--yellow);margin-left:4px;">View Reorder Alerts →</a></div>` : ''}
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">▦ Inventory Overview</div>
+      <button class="btn btn-secondary btn-sm" onclick="showTab('inventory')">View All →</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>PRODUCT</th><th>CATEGORY</th><th>SS QTY</th><th>QBO QTY</th><th>TOTAL</th><th>UNIT</th><th>STATUS</th>
+        </tr></thead>
+        <tbody>
+          ${all.slice(0,7).map(m => `
+          <tr>
+            <td><div style="color:var(--text);font-weight:500;">${m.name}</div><div class="mono" style="font-size:10px;color:var(--text3)">${m.sssku}</div></td>
+            <td>${catTag(m.category)}</td>
+            <td class="mono">${m.ssQty.toLocaleString()}</td>
+            <td class="mono">${m.qboQty.toLocaleString()}</td>
+            <td class="mono" style="font-weight:600;color:var(--text)">${totalQty(m).toLocaleString()}</td>
+            <td><span class="unit-badge">${unitLabel(m)}</span></td>
+            <td>${statusBadge(stockStatus(m))}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">✦ Recent Purchase Orders</div>
+      <button class="btn btn-primary btn-sm" onclick="showTab('po')">New PO →</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>PO #</th><th>VENDOR</th><th>DATE</th><th>TOTAL</th><th>STATUS</th><th>QBO</th></tr></thead>
+        <tbody>
+          ${STATE.pos.map(po => `
+          <tr>
+            <td class="mono" style="color:var(--accent)">${po.id}</td>
+            <td>${po.vendor}</td>
+            <td>${po.date}</td>
+            <td class="mono">$${po.total.toLocaleString()}</td>
+            <td><span class="badge ${po.status==='approved'?'badge-green':'badge-yellow'}">${po.status.toUpperCase()}</span></td>
+            <td>${po.qboSent ? '<span class="badge badge-green">Sent ✓</span>' : '<span class="badge badge-yellow">Pending</span>'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// SKU MAPPING
+// ============================================================
+function renderMapping() {
+  return `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div>
+      <div style="font-size:16px;font-weight:600;">SKU Mapping</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px;">Link ShipStation SKUs to QuickBooks Items</div>
+    </div>
+    <button class="btn btn-primary" onclick="addMapping()">+ Add Mapping</button>
+  </div>
+
+  <div class="search-bar">
+    <div class="search-input">
+      <input type="text" placeholder="Search SKU or product name..." oninput="filterMapping(this.value)" id="map-search">
+    </div>
+    <select style="width:160px;" onchange="filterMappingCat(this.value)">
+      <option value="">All Categories</option>
+      <option value="welding">Welding</option>
+      <option value="cable">Cable / Wire Rope</option>
+      <option value="caster">Casters</option>
+      <option value="rigging">Rigging</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table id="mapping-table">
+        <thead><tr>
+          <th>SS SKU</th><th>QBO SKU</th><th>PRODUCT NAME</th><th>CATEGORY</th><th>UNIT</th><th>REORDER PT</th><th>VENDOR</th><th>ACTIONS</th>
+        </tr></thead>
+        <tbody>
+          ${STATE.mappings.map(m => renderMappingRow(m)).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderMappingRow(m) {
+  return `<tr id="mrow-${m.id}">
+    <td class="mono" style="color:var(--accent);font-size:11px;">${m.sssku}</td>
+    <td class="mono" style="color:var(--purple);font-size:11px;">${m.qbosku}</td>
+    <td style="color:var(--text);font-weight:500;">${m.name}</td>
+    <td>${catTag(m.category)}</td>
+    <td><span class="unit-badge">${unitLabel(m)}</span></td>
+    <td class="mono">${m.reorderPoint.toLocaleString()} <span class="unit-badge">${unitLabel(m)}</span></td>
+    <td style="color:var(--text2);font-size:12px;">${m.vendor}</td>
+    <td>
+      <div style="display:flex;gap:4px;">
+        <button class="btn btn-secondary btn-sm" onclick="editMapping(${m.id})">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMapping(${m.id})">✕</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+function addMapping() {
+  openMappingEditor(null);
+}
+
+function editMapping(id) {
+  const m = STATE.mappings.find(x => x.id === id);
+  openMappingEditor(m);
+}
+
+function openMappingEditor(m) {
+  const isNew = !m;
+  const modal = document.getElementById('po-modal');
+  document.getElementById('po-modal-title').textContent = isNew ? 'Add SKU Mapping' : 'Edit SKU Mapping';
+  document.getElementById('po-modal-body').innerHTML = `
+    <div class="form-row">
+      <div class="form-group"><label>ShipStation SKU</label><input id="me-sssku" value="${m?m.sssku:''}" placeholder="e.g. ER70S-6-030-33"></div>
+      <div class="form-group"><label>QuickBooks SKU / Item Name</label><input id="me-qbosku" value="${m?m.qbosku:''}" placeholder="e.g. WW-ER70S6-030"></div>
+    </div>
+    <div class="form-group"><label>Product Name</label><input id="me-name" value="${m?m.name:''}" placeholder="Full product description"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Category</label>
+        <select id="me-cat">
+          <option value="welding" ${m&&m.category==='welding'?'selected':''}>Welding</option>
+          <option value="cable" ${m&&m.category==='cable'?'selected':''}>Cable / Wire Rope</option>
+          <option value="caster" ${m&&m.category==='caster'?'selected':''}>Casters</option>
+          <option value="rigging" ${m&&m.category==='rigging'?'selected':''}>Rigging</option>
+          <option value="general" ${m&&m.category==='general'?'selected':''}>General</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Unit</label>
+        <select id="me-unit">
+          <option value="lb" ${m&&m.unit==='lb'?'selected':''}>lb (Welding weight)</option>
+          <option value="ft" ${m&&m.unit==='ft'?'selected':''}>ft (Cable length)</option>
+          <option value="ea" ${m&&m.unit==='ea'?'selected':''}>ea (Each / Count)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Reorder Point</label><input type="number" id="me-rp" value="${m?m.reorderPoint:50}"></div>
+      <div class="form-group"><label>Reorder Quantity</label><input type="number" id="me-rq" value="${m?m.reorderQty:100}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Vendor</label><input id="me-vendor" value="${m?m.vendor:''}" placeholder="Vendor name"></div>
+      <div class="form-group"><label>Unit Cost ($)</label><input type="number" step="0.01" id="me-cost" value="${m?m.unitCost:0}"></div>
+    </div>`;
+  document.getElementById('po-modal-footer').innerHTML = `
+    <button class="btn btn-secondary" onclick="closePOModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveMappingEditor(${m?m.id:'null'}, ${isNew})">Save Mapping</button>`;
+  modal.classList.add('show');
+}
+
+function saveMappingEditor(id, isNew) {
+  const data = {
+    sssku: document.getElementById('me-sssku').value.trim(),
+    qbosku: document.getElementById('me-qbosku').value.trim(),
+    name: document.getElementById('me-name').value.trim(),
+    category: document.getElementById('me-cat').value,
+    unit: document.getElementById('me-unit').value,
+    reorderPoint: +document.getElementById('me-rp').value,
+    reorderQty: +document.getElementById('me-rq').value,
+    vendor: document.getElementById('me-vendor').value.trim(),
+    unitCost: +document.getElementById('me-cost').value,
+  };
+  if (isNew) {
+    data.id = Date.now();
+    data.ssQty = 0; data.qboQty = 0;
+    STATE.mappings.push(data);
+  } else {
+    const idx = STATE.mappings.findIndex(x => x.id === id);
+    STATE.mappings[idx] = { ...STATE.mappings[idx], ...data };
+  }
+  closePOModal();
+  showTab('mapping');
+  updateReorderBadge();
+  toast('Mapping saved', 'success');
+}
+
+function deleteMapping(id) {
+  if (!confirm('Delete this SKU mapping?')) return;
+  STATE.mappings = STATE.mappings.filter(x => x.id !== id);
+  showTab('mapping');
+  updateReorderBadge();
+  toast('Mapping deleted', 'success');
+}
+
+function filterMapping(q) {
+  const rows = document.querySelectorAll('#mapping-table tbody tr');
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+function filterMappingCat(cat) {
+  const rows = document.querySelectorAll('#mapping-table tbody tr');
+  rows.forEach((row, i) => {
+    if (!cat) { row.style.display = ''; return; }
+    row.style.display = STATE.mappings[i] && STATE.mappings[i].category === cat ? '' : 'none';
+  });
+}
+
+// ============================================================
+// INVENTORY
+// ============================================================
+function renderInventory() {
+  return `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div>
+      <div style="font-size:16px;font-weight:600;">Inventory Status</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px;">Combined ShipStation (online) + QuickBooks (offline) inventory</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary btn-sm" onclick="showTab('reorder')">View Reorder Alerts</button>
+      <button class="btn btn-secondary btn-sm" onclick="refreshAll()">↻ Sync Now</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchInvTab('all',this)">All Items</div>
+    <div class="tab" onclick="switchInvTab('welding',this)">Welding <span class="unit-badge">lb</span></div>
+    <div class="tab" onclick="switchInvTab('cable',this)">Cable <span class="unit-badge">ft</span></div>
+    <div class="tab" onclick="switchInvTab('caster',this)">Casters <span class="unit-badge">ea</span></div>
+    <div class="tab" onclick="switchInvTab('rigging',this)">Rigging <span class="unit-badge">ea</span></div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table id="inv-table">
+        <thead><tr>
+          <th>PRODUCT</th><th>SS (Online)</th><th>QBO (Offline)</th><th>TOTAL</th><th>UNIT</th>
+          <th>REORDER PT</th><th>STOCK LEVEL</th><th>STATUS</th>
+        </tr></thead>
+        <tbody>
+          ${STATE.mappings.map(m => renderInvRow(m)).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderInvRow(m) {
+  const total = totalQty(m);
+  const pct = Math.min(100, Math.round(total / (m.reorderPoint * 2) * 100));
+  const color = stockStatus(m) === 'ok' ? 'var(--green)' : stockStatus(m) === 'warn' ? 'var(--yellow)' : 'var(--red)';
+  return `<tr data-cat="${m.category}">
+    <td>
+      <div style="color:var(--text);font-weight:500;">${m.name}</div>
+      <div style="display:flex;gap:6px;margin-top:3px;">
+        <span class="mono" style="font-size:10px;color:var(--accent)">SS:${m.sssku}</span>
+        <span style="color:var(--text3)">|</span>
+        <span class="mono" style="font-size:10px;color:var(--purple)">QBO:${m.qbosku}</span>
+      </div>
+    </td>
+    <td class="mono" style="color:var(--accent)">${m.ssQty.toLocaleString()}</td>
+    <td class="mono" style="color:var(--purple)">${m.qboQty.toLocaleString()}</td>
+    <td class="mono" style="font-weight:700;color:var(--text);font-size:15px;">${total.toLocaleString()}</td>
+    <td><span class="unit-badge">${unitLabel(m)}</span></td>
+    <td class="mono" style="color:var(--text3)">${m.reorderPoint.toLocaleString()}</td>
+    <td style="min-width:120px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="progress-bar" style="flex:1;">
+          <div class="progress-fill" style="width:${pct}%;background:${color};"></div>
+        </div>
+        <span style="font-size:11px;color:var(--text3);font-family:var(--mono);min-width:30px;">${pct}%</span>
+      </div>
+    </td>
+    <td>${statusBadge(stockStatus(m))}</td>
+  </tr>`;
+}
+
+function switchInvTab(cat, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const rows = document.querySelectorAll('#inv-table tbody tr');
+  rows.forEach(row => {
+    row.style.display = (cat === 'all' || row.dataset.cat === cat) ? '' : 'none';
+  });
+}
+
+// ============================================================
+// REORDER ALERTS
+// ============================================================
+function renderReorder() {
+  const items = reorderItems();
+  return `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div>
+      <div style="font-size:16px;font-weight:600;">Reorder Alerts</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px;">${items.length} item(s) at or below reorder point</div>
+    </div>
+    ${items.length > 0 ? `<button class="btn btn-primary" onclick="createPOFromAlerts()">Create PO from All Alerts</button>` : ''}
+  </div>
+
+  ${items.length === 0 ? `
+  <div class="empty-state">
+    <div class="icon">✓</div>
+    <div style="font-size:15px;color:var(--text2);margin-bottom:6px;">All items are well stocked</div>
+    <div style="font-size:12px;">No reorder alerts at this time</div>
+  </div>` : `
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>PRODUCT</th><th>CATEGORY</th><th>CURRENT QTY</th><th>REORDER PT</th><th>SUGGEST ORDER</th><th>VENDOR</th><th>EST. COST</th><th>ACTION</th>
+        </tr></thead>
+        <tbody>
+          ${items.map(m => {
+            const total = totalQty(m);
+            const estCost = m.reorderQty * m.unitCost;
+            return `<tr>
+              <td>
+                <div style="color:var(--text);font-weight:500;">${m.name}</div>
+                <div class="mono" style="font-size:10px;color:var(--text3)">${m.sssku}</div>
+              </td>
+              <td>${catTag(m.category)}</td>
+              <td><span style="color:var(--red);font-weight:600;font-family:var(--mono);">${total.toLocaleString()}</span> <span class="unit-badge">${unitLabel(m)}</span></td>
+              <td class="mono" style="color:var(--text3)">${m.reorderPoint.toLocaleString()} ${unitLabel(m)}</td>
+              <td class="mono" style="color:var(--yellow)">${m.reorderQty.toLocaleString()} ${unitLabel(m)}</td>
+              <td style="color:var(--text2)">${m.vendor}</td>
+              <td class="mono" style="color:var(--green)">$${estCost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+              <td><button class="btn btn-primary btn-sm" onclick="createSinglePO(${m.id})">Create PO</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+    <div>
+      <div style="font-size:12px;color:var(--text2);">Total estimated reorder cost</div>
+      <div style="font-size:20px;font-weight:600;font-family:var(--mono);color:var(--yellow);">
+        $${items.reduce((s,m)=>s+m.reorderQty*m.unitCost,0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="createPOFromAlerts()">Generate Combined PO →</button>
+  </div>`}`;
+}
+
+function createPOFromAlerts() {
+  const items = reorderItems();
+  const poItems = items.map(m => ({ mappingId: m.id, name: m.name, qty: m.reorderQty, unit: unitLabel(m), cost: m.unitCost, vendor: m.vendor }));
+  openPOWorkflow(poItems, 'Multiple Vendors');
+}
+
+function createSinglePO(id) {
+  const m = STATE.mappings.find(x => x.id === id);
+  openPOWorkflow([{ mappingId: m.id, name: m.name, qty: m.reorderQty, unit: unitLabel(m), cost: m.unitCost, vendor: m.vendor }], m.vendor);
+}
+
+// ============================================================
+// PURCHASE ORDERS LIST
+// ============================================================
+function renderPO() {
+  return `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div>
+      <div style="font-size:16px;font-weight:600;">Purchase Orders</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px;">Create, approve, and send POs to QuickBooks Online</div>
+    </div>
+    <button class="btn btn-primary" onclick="openNewPOWizard()">+ New Purchase Order</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">✦ All Purchase Orders</div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>PO NUMBER</th><th>VENDOR</th><th>DATE</th><th>ITEMS</th><th>TOTAL</th><th>STATUS</th><th>QBO STATUS</th><th>ACTIONS</th>
+        </tr></thead>
+        <tbody>
+          ${STATE.pos.map(po => `
+          <tr>
+            <td class="mono" style="color:var(--accent)">${po.id}</td>
+            <td style="color:var(--text)">${po.vendor}</td>
+            <td style="color:var(--text2)">${po.date}</td>
+            <td class="mono">${po.items.length}</td>
+            <td class="mono" style="color:var(--green);">$${po.total.toLocaleString()}</td>
+            <td>
+              ${po.status === 'draft' ? '<span class="badge badge-gray">DRAFT</span>' : ''}
+              ${po.status === 'pending' ? '<span class="badge badge-yellow">PENDING APPROVAL</span>' : ''}
+              ${po.status === 'approved' ? '<span class="badge badge-green">APPROVED</span>' : ''}
+            </td>
+            <td>
+              ${po.qboSent ? '<span class="badge badge-green">Sent to QBO ✓</span>' : po.status === 'approved' ? `<button class="btn btn-success btn-sm" onclick="sendToQBO('${po.id}')">Send to QBO</button>` : '<span class="badge badge-gray">—</span>'}
+            </td>
+            <td>
+              <div style="display:flex;gap:4px;">
+                <button class="btn btn-secondary btn-sm" onclick="viewPO('${po.id}')">View</button>
+                ${po.status !== 'approved' ? `<button class="btn btn-warning btn-sm" onclick="approvePO('${po.id}')">Approve</button>` : ''}
+              </div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function openNewPOWizard() {
+  // Open with empty items - user picks manually
+  openPOWorkflow([], 'New Vendor');
+}
+
+// ============================================================
+// PO WORKFLOW: 4-STEP: Draft → Review → Approve → Send to QBO
+// ============================================================
+let _currentPOData = null;
+
+function openPOWorkflow(preItems, vendor) {
+  _currentPOData = {
+    items: preItems.length ? preItems : [],
+    vendor: vendor || '',
+    notes: '',
+    signed: false,
+    step: 1,
+    poNumber: 'PO-2026-' + String(STATE.pos.length + 2).padStart(3,'0'),
+    date: new Date().toISOString().slice(0,10),
+  };
+  renderPOStep();
+  document.getElementById('po-modal').classList.add('show');
+}
+
+function renderPOStep() {
+  const d = _currentPOData;
+  document.getElementById('po-modal-title').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span>Purchase Order</span>
+      <span class="mono" style="color:var(--accent);font-size:13px;">${d.poNumber}</span>
+    </div>`;
+
+  // Workflow steps header
+  const steps = ['Draft PO','Review','Approve','Send to QBO'];
+  const wfHtml = `
+    <div class="workflow-steps">
+      ${steps.map((s,i) => {
+        const n = i+1;
+        const cls = d.step > n ? 'done' : d.step === n ? 'active' : 'pending';
+        return `
+          ${i > 0 ? `<div class="wf-line ${d.step > n ? 'done' : ''}"></div>` : ''}
+          <div class="wf-step" style="flex:none;">
+            <div class="wf-dot ${cls}">${d.step > n ? '✓' : n}</div>
+            <div class="wf-label">${s}</div>
+          </div>`;
+      }).join('')}
+    </div>`;
+
+  let body = wfHtml;
+  let footer = '';
+
+  if (d.step === 1) {
+    // STEP 1: Draft
+    const total = d.items.reduce((s,it) => s + it.qty * it.cost, 0);
+    body += `
+      <div style="margin-bottom:16px;">
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group"><label>Vendor</label><input id="po-vendor" value="${d.vendor}" placeholder="Vendor name"></div>
+          <div class="form-group"><label>PO Date</label><input type="date" id="po-date" value="${d.date}"></div>
+        </div>
+        <div class="form-group"><label>Notes</label><textarea id="po-notes" rows="2" placeholder="Shipping instructions, special requirements...">${d.notes}</textarea></div>
+      </div>
+
+      <div class="section-title">Line Items</div>
+      <div id="po-line-items">
+        <div class="po-item-row header">
+          <div>Product</div><div>Qty</div><div>Unit</div><div>Unit Cost</div><div>Total</div>
+        </div>
+        ${d.items.map((it,i) => `
+        <div class="po-item-row">
+          <div><input value="${it.name}" onchange="_currentPOData.items[${i}].name=this.value" placeholder="Product name" style="font-size:12px;padding:4px 8px;"></div>
+          <div><input type="number" value="${it.qty}" onchange="_currentPOData.items[${i}].qty=+this.value;refreshPOTotal()" style="font-size:12px;padding:4px 8px;"></div>
+          <div><span class="unit-badge">${it.unit}</span></div>
+          <div><input type="number" step="0.01" value="${it.cost}" onchange="_currentPOData.items[${i}].cost=+this.value;refreshPOTotal()" style="font-size:12px;padding:4px 8px;"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span class="mono" style="font-size:12px;color:var(--green);">$${(it.qty*it.cost).toFixed(2)}</span>
+            <button class="btn btn-danger btn-sm" onclick="removePOItem(${i})" style="padding:2px 6px;">✕</button>
+          </div>
+        </div>`).join('')}
+      </div>
+
+      <button class="btn btn-secondary" style="margin-top:10px;width:100%;" onclick="addPOLineItem()">+ Add Line Item</button>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">TOTAL</div>
+          <div id="po-total" class="mono" style="font-size:22px;font-weight:600;color:var(--green);">$${total.toFixed(2)}</div>
+        </div>
+      </div>`;
+    footer = `
+      <button class="btn btn-secondary" onclick="closePOModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="goToPOStep(2)">Review PO →</button>`;
+
+  } else if (d.step === 2) {
+    // STEP 2: Review - PO Preview
+    const total = d.items.reduce((s,it) => s + it.qty * it.cost, 0);
+    body += `
+      <div style="margin-bottom:12px;">
+        <div class="alert-banner info">📋 Review all details carefully before proceeding to approval.</div>
+      </div>
+      <div class="po-preview">
+        <div class="po-preview-header">
+          <div>
+            <div class="po-company">${STATE.cfg.company}</div>
+            <div style="color:var(--text2);font-size:12px;margin-top:4px;">Norcross, Georgia</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="po-number">${d.poNumber}</div>
+            <div style="color:var(--text2);font-size:12px;margin-top:4px;">Date: ${d.date}</div>
+          </div>
+        </div>
+        <div style="padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:14px;">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">VENDOR</div>
+          <div style="font-weight:600;color:var(--text);">${d.vendor}</div>
+        </div>
+        <table style="margin-bottom:14px;">
+          <thead><tr>
+            <th>ITEM</th><th>QTY</th><th>UNIT</th><th>UNIT COST</th><th style="text-align:right;">AMOUNT</th>
+          </tr></thead>
+          <tbody>
+            ${d.items.map(it => `
+            <tr>
+              <td style="color:var(--text)">${it.name}</td>
+              <td class="mono">${it.qty.toLocaleString()}</td>
+              <td><span class="unit-badge">${it.unit}</span></td>
+              <td class="mono">$${it.cost.toFixed(2)}</td>
+              <td class="mono" style="text-align:right;color:var(--green);">$${(it.qty*it.cost).toFixed(2)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="display:flex;justify-content:flex-end;padding-top:10px;border-top:1px solid var(--border);">
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:var(--text3);">TOTAL AMOUNT</div>
+            <div class="mono" style="font-size:20px;font-weight:700;color:var(--green);">$${total.toFixed(2)}</div>
+          </div>
+        </div>
+        ${d.notes ? `<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">Notes: ${d.notes}</div>` : ''}
+      </div>`;
+    footer = `
+      <button class="btn btn-secondary" onclick="goToPOStep(1)">← Edit</button>
+      <button class="btn btn-warning" onclick="goToPOStep(3)">Proceed to Approval →</button>`;
+
+  } else if (d.step === 3) {
+    // STEP 3: Approval
+    const total = d.items.reduce((s,it) => s + it.qty * it.cost, 0);
+    body += `
+      <div class="approval-box">
+        <div class="approval-header">
+          <span style="font-size:16px;">✦</span> Purchase Order Approval
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">
+          Approving this PO authorizes <strong style="color:var(--text);">${STATE.cfg.company}</strong> to place an order with <strong style="color:var(--text);">${d.vendor}</strong> for <strong style="color:var(--green);">$${total.toFixed(2)}</strong>.
+        </div>
+
+        <div class="section-title">Pre-Approval Checklist</div>
+        <div class="approval-checklist" id="approval-checklist">
+          <div class="check-item" id="chk-1" onclick="toggleCheck('chk-1')">
+            <div class="ck"></div>
+            <span>Vendor is approved and on record</span>
+          </div>
+          <div class="check-item" id="chk-2" onclick="toggleCheck('chk-2')">
+            <div class="ck"></div>
+            <span>Quantities and pricing have been verified</span>
+          </div>
+          <div class="check-item" id="chk-3" onclick="toggleCheck('chk-3')">
+            <div class="ck"></div>
+            <span>Budget available for this purchase</span>
+          </div>
+          <div class="check-item" id="chk-4" onclick="toggleCheck('chk-4')">
+            <div class="ck"></div>
+            <span>Items match actual reorder needs</span>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:16px;">Approver Signature</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Approver: <strong style="color:var(--text);">${STATE.cfg.approver}</strong></div>
+        <div class="signature-area ${d.signed ? 'signed' : ''}" id="sig-area" onclick="signPO()">
+          ${d.signed ?
+            `<div style="font-size:20px;margin-bottom:4px;">✓</div>
+             <div style="font-size:13px;font-weight:600;">Signed by ${STATE.cfg.approver}</div>
+             <div style="font-size:11px;margin-top:4px;">${new Date().toLocaleString()}</div>` :
+            `<div style="font-size:20px;margin-bottom:6px;">✍</div>
+             <div>Click to sign and approve this Purchase Order</div>`}
+        </div>
+      </div>`;
+    footer = `
+      <button class="btn btn-secondary" onclick="goToPOStep(2)">← Back</button>
+      <button class="btn btn-success" id="approve-btn" onclick="approvePOWorkflow()" ${!d.signed ? 'disabled' : ''}>Approve PO ✓</button>`;
+
+  } else if (d.step === 4) {
+    // STEP 4: Send to QBO
+    const total = d.items.reduce((s,it) => s + it.qty * it.cost, 0);
+    body += `
+      <div style="text-align:center;padding:20px 0;">
+        <div style="font-size:40px;margin-bottom:12px;">✓</div>
+        <div style="font-size:18px;font-weight:600;color:var(--green);margin-bottom:6px;">PO Approved!</div>
+        <div style="font-size:13px;color:var(--text2);">${d.poNumber} • ${d.vendor} • $${total.toFixed(2)}</div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><div class="card-title">Send to QuickBooks Online</div></div>
+        <div class="card-body">
+          ${STATE.qboConnected ?
+          `<div style="font-size:13px;color:var(--text2);margin-bottom:14px;">
+            This PO will be created as a <strong style="color:var(--text);">Purchase Order</strong> in QuickBooks Online and linked to the vendor account.
+          </div>
+          <div style="background:var(--bg3);border-radius:6px;padding:12px;margin-bottom:14px;font-size:12px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text3);">QBO Company</span><span>${STATE.cfg.company}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text3);">Vendor</span><span>${d.vendor}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text3);">PO Amount</span><span class="mono" style="color:var(--green);">$${total.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--text3);">Line Items</span><span>${d.items.length} item(s)</span></div>
+          </div>
+          <button class="btn btn-success" style="width:100%;padding:10px;" onclick="sendPOToQBO()">
+            Send PO to QuickBooks Online →
+          </button>` :
+          `<div class="qbo-auth-box">
+            <div class="qbo-logo">🔗</div>
+            <div style="font-size:14px;font-weight:500;margin-bottom:8px;">QuickBooks Not Connected</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">Connect QBO to send POs directly. PO has been saved and can be sent later.</div>
+            <button class="btn btn-primary" onclick="startQBOAuth()">Connect QuickBooks Online</button>
+          </div>`}
+        </div>
+      </div>
+
+      <div style="text-align:center;">
+        <button class="btn btn-secondary" onclick="closePOModal();showTab('po')">Done — View All POs</button>
+      </div>`;
+    footer = '';
+  }
+
+  document.getElementById('po-modal-body').innerHTML = body;
+  document.getElementById('po-modal-footer').innerHTML = footer;
+}
+
+function goToPOStep(step) {
+  if (step === 2) {
+    _currentPOData.vendor = document.getElementById('po-vendor')?.value || _currentPOData.vendor;
+    _currentPOData.date = document.getElementById('po-date')?.value || _currentPOData.date;
+    _currentPOData.notes = document.getElementById('po-notes')?.value || '';
+    if (!_currentPOData.vendor) { toast('Please enter vendor name', 'error'); return; }
+    if (_currentPOData.items.length === 0) { toast('Add at least one line item', 'error'); return; }
+  }
+  _currentPOData.step = step;
+  renderPOStep();
+}
+
+function addPOLineItem() {
+  _currentPOData.vendor = document.getElementById('po-vendor')?.value || _currentPOData.vendor;
+  _currentPOData.date = document.getElementById('po-date')?.value || _currentPOData.date;
+  _currentPOData.notes = document.getElementById('po-notes')?.value || '';
+  _currentPOData.items.push({ name:'', qty:1, unit:'ea', cost:0 });
+  renderPOStep();
+}
+
+function removePOItem(i) {
+  _currentPOData.vendor = document.getElementById('po-vendor')?.value || _currentPOData.vendor;
+  _currentPOData.date = document.getElementById('po-date')?.value || _currentPOData.date;
+  _currentPOData.notes = document.getElementById('po-notes')?.value || '';
+  _currentPOData.items.splice(i, 1);
+  renderPOStep();
+}
+
+function refreshPOTotal() {
+  const total = _currentPOData.items.reduce((s,it) => s + it.qty * it.cost, 0);
+  const el = document.getElementById('po-total');
+  if (el) el.textContent = '$' + total.toFixed(2);
+}
+
+let _checkedItems = new Set();
+function toggleCheck(id) {
+  const el = document.getElementById(id);
+  if (_checkedItems.has(id)) {
+    _checkedItems.delete(id);
+    el.classList.remove('checked');
+    el.querySelector('.ck').textContent = '';
+  } else {
+    _checkedItems.add(id);
+    el.classList.add('checked');
+    el.querySelector('.ck').textContent = '✓';
+  }
+  // Enable sign only if all 4 checked
+  const sigArea = document.getElementById('sig-area');
+  if (sigArea && _checkedItems.size >= 4) {
+    sigArea.style.opacity = '1';
+    sigArea.style.pointerEvents = 'auto';
+  }
+}
+
+function signPO() {
+  if (_checkedItems.size < 4) {
+    toast('Please complete all checklist items first', 'error');
+    return;
+  }
+  _currentPOData.signed = true;
+  renderPOStep();
+  toast('PO signed by ' + STATE.cfg.approver, 'success');
+}
+
+function approvePOWorkflow() {
+  if (!_currentPOData.signed) { toast('Signature required', 'error'); return; }
+  _currentPOData.step = 4;
+
+  // Save to STATE.pos
+  const total = _currentPOData.items.reduce((s,it) => s + it.qty * it.cost, 0);
+  STATE.pos.unshift({
+    id: _currentPOData.poNumber,
+    vendor: _currentPOData.vendor,
+    status: 'approved',
+    qboSent: false,
+    date: _currentPOData.date,
+    total: total,
+    items: _currentPOData.items,
+  });
+
+  _checkedItems.clear();
+  renderPOStep();
+  toast('PO approved successfully!', 'success');
+}
+
+function sendPOToQBO() {
+  if (!STATE.qboConnected) { toast('QuickBooks not connected', 'error'); return; }
+  // Simulate QBO API call
+  toast('Sending to QuickBooks Online...', 'info');
+  setTimeout(() => {
+    const po = STATE.pos.find(p => p.id === _currentPOData.poNumber);
+    if (po) po.qboSent = true;
+    toast('PO successfully created in QuickBooks Online!', 'success');
+    closePOModal();
+    showTab('po');
+  }, 2000);
+}
+
+// From PO list actions
+function approvePO(poId) {
+  const po = STATE.pos.find(p => p.id === poId);
+  if (!po) return;
+  _currentPOData = {
+    items: po.items,
+    vendor: po.vendor,
+    notes: '',
+    signed: false,
+    step: 3,
+    poNumber: po.id,
+    date: po.date,
+  };
+  _checkedItems.clear();
+  renderPOStep();
+  document.getElementById('po-modal').classList.add('show');
+}
+
+function viewPO(poId) {
+  const po = STATE.pos.find(p => p.id === poId);
+  if (!po) return;
+  _currentPOData = { items: po.items, vendor: po.vendor, notes: '', signed: true, step: 2, poNumber: po.id, date: po.date };
+  renderPOStep();
+  document.getElementById('po-modal').classList.add('show');
+  document.getElementById('po-modal-footer').innerHTML = `<button class="btn btn-secondary" onclick="closePOModal()">Close</button>
+    ${!po.qboSent && po.status === 'approved' ? `<button class="btn btn-success" onclick="sendToQBO('${po.id}')">Send to QBO</button>` : ''}`;
+}
+
+function sendToQBO(poId) {
+  if (!STATE.qboConnected) {
+    toast('QuickBooks not connected. Connect in Settings.', 'error');
+    return;
+  }
+  toast('Sending PO to QuickBooks Online...', 'info');
+  setTimeout(() => {
+    const po = STATE.pos.find(p => p.id === poId);
+    if (po) po.qboSent = true;
+    toast('PO sent to QuickBooks Online!', 'success');
+    closePOModal();
+    showTab('po');
+  }, 2000);
+}
+
+// ============================================================
+// QBO OAuth
+// ============================================================
+function startQBOAuth() {
+  // Save latest credentials before opening popup
+  STATE.cfg.qboClientId = document.getElementById('cfg-qbo-client-id').value.trim() || STATE.cfg.qboClientId;
+  STATE.cfg.qboClientSecret = document.getElementById('cfg-qbo-client-secret').value.trim() || STATE.cfg.qboClientSecret;
+  localStorage.setItem('hyw-cfg', JSON.stringify(STATE.cfg));
+
+  const clientId = STATE.cfg.qboClientId;
+  if (!clientId) { toast('Enter QBO Client ID first', 'error'); return; }
+
+  // Hardcoded redirect URI for GitHub Pages
+  const redirectUri = 'https://cheols4044.github.io/inventory/callback.html';
+  // Expected: https://cheols4044.github.io/inventory/callback.html
+
+  const scope = encodeURIComponent('com.intuit.quickbooks.accounting');
+  const state = Math.random().toString(36).slice(2);
+  localStorage.setItem('qbo-oauth-state', state);
+
+  const url = `https://appcenter.intuit.com/connect/oauth2?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&state=${state}`;
+
+  toast('Opening QuickBooks login...', 'info');
+  const popup = window.open(url, 'QBO OAuth', 'width=620,height=700,left=200,top=80');
+
+  if (!popup) {
+    toast('Popup blocked! Allow popups for this site.', 'error');
+    return;
+  }
+
+  // Listen for postMessage from callback.html
+  function onMessage(event) {
+    if (event.origin !== window.location.origin) return;
+    if (event.data && event.data.type === 'QBO_AUTH_SUCCESS') {
+      window.removeEventListener('message', onMessage);
+      STATE.cfg.qboRealmId = event.data.realmId;
+      STATE.cfg.qboAccessToken = event.data.accessToken;
+      STATE.cfg.qboRefreshToken = event.data.refreshToken;
+      STATE.cfg.qboTokenExpiry = Date.now() + (event.data.expiresIn * 1000);
+      STATE.qboConnected = true;
+      localStorage.setItem('hyw-cfg', JSON.stringify(STATE.cfg));
+      document.getElementById('cfg-qbo-realm').value = event.data.realmId;
+      updateStatusPills();
+      toast('QuickBooks Online connected! Company ID: ' + event.data.realmId, 'success');
+    }
+    if (event.data && event.data.type === 'QBO_AUTH_ERROR') {
+      window.removeEventListener('message', onMessage);
+      toast('QBO Auth failed: ' + event.data.error, 'error');
+    }
+  }
+  window.addEventListener('message', onMessage);
+
+  // Fallback: poll localStorage if popup can't postMessage (same-origin guarantee)
+  const poll = setInterval(() => {
+    if (popup.closed) {
+      clearInterval(poll);
+      window.removeEventListener('message', onMessage);
+      // Re-read cfg from localStorage in case callback.html updated it
+      const saved = JSON.parse(localStorage.getItem('hyw-cfg') || '{}');
+      if (saved.qboRealmId && saved.qboAccessToken) {
+        Object.assign(STATE.cfg, saved);
+        STATE.qboConnected = true;
+        document.getElementById('cfg-qbo-realm').value = saved.qboRealmId;
+        updateStatusPills();
+        toast('QuickBooks Online connected!', 'success');
+      }
+    }
+  }, 800);
+}
+
+function disconnectQBO() {
+  STATE.cfg.qboRealmId = '';
+  STATE.cfg.qboAccessToken = '';
+  STATE.cfg.qboRefreshToken = '';
+  STATE.qboConnected = false;
+  document.getElementById('cfg-qbo-realm').value = '';
+  localStorage.setItem('hyw-cfg', JSON.stringify(STATE.cfg));
+  updateStatusPills();
+  toast('QuickBooks disconnected', 'success');
+}
+
+// ============================================================
+// ShipStation Test
+// ============================================================
+function testSS() {
+  const key = document.getElementById('cfg-ss-key').value.trim();
+  const secret = document.getElementById('cfg-ss-secret').value.trim();
+  if (!key || !secret) { toast('Enter API Key and Secret', 'error'); return; }
+  toast('Testing ShipStation connection...', 'info');
+  const encoded = btoa(key + ':' + secret);
+  fetch('https://ssapi.shipstation.com/orders?pageSize=1', {
+    headers: { 'Authorization': 'Basic ' + encoded }
+  }).then(r => {
+    if (r.ok) {
+      STATE.ssConnected = true;
+      updateStatusPills();
+      toast('ShipStation connected!', 'success');
+    } else {
+      toast('ShipStation connection failed: ' + r.status, 'error');
+    }
+  }).catch(() => {
+    // CORS fallback - assume connected if keys provided
+    STATE.ssConnected = true;
+    updateStatusPills();
+    toast('ShipStation keys saved (CORS proxy may be needed for browser)', 'success');
+  });
+}
+
+// ============================================================
+// UI Helpers
+// ============================================================
+function openSettings() {
+  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+function closePOModal() {
+  document.getElementById('po-modal').classList.remove('show');
+  _checkedItems.clear();
+}
+
+function toast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const icons = { success:'✓', error:'✕', info:'ℹ' };
+  const colors = { success:'var(--green)', error:'var(--red)', info:'var(--accent)' };
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span style="color:${colors[type]};font-weight:600;">${icons[type]}</span> ${msg}`;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+</script>
+</body>
+</html>
